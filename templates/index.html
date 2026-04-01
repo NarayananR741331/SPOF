@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SPOF Analyzer - Single Point of Failure Detection</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #f8fafc, #eef2ff, #e0e7ff);
+            min-height: 100vh;
+            color: #1e293b;
+        }
+
+        /* Header */
+        header {
+            background: white;
+            border-bottom: 1px solid #e2e8f0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            padding: 16px 24px;
+        }
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .logo {
+            width: 40px; height: 40px;
+            background: #4f46e5;
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .logo svg { width: 24px; height: 24px; fill: white; }
+        .header-content h1 { font-size: 1.5rem; font-weight: 700; color: #0f172a; }
+        .header-content p { font-size: 0.875rem; color: #64748b; }
+
+        /* Main Layout */
+        main {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 32px 24px;
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 24px;
+        }
+        @media (max-width: 768px) {
+            main { grid-template-columns: 1fr; }
+        }
+
+        /* Cards */
+        .card {
+            background: white;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            overflow: hidden;
+        }
+        .card-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid #f1f5f9;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .card-header h2 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #0f172a;
+        }
+        .card-body { padding: 20px; }
+
+        /* Upload Area */
+        .upload-zone {
+            border: 2px dashed #cbd5e1;
+            border-radius: 10px;
+            padding: 40px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: #fafbfc;
+        }
+        .upload-zone:hover, .upload-zone.dragover {
+            border-color: #818cf8;
+            background: #eef2ff;
+        }
+        .upload-zone svg {
+            width: 40px; height: 40px;
+            margin: 0 auto 12px;
+            color: #94a3b8;
+        }
+        .upload-zone p { color: #64748b; font-size: 0.875rem; margin-top: 4px; }
+        .upload-zone .main-text { font-size: 1rem; color: #475569; font-weight: 500; }
+
+        /* File List */
+        .file-list { margin-top: 12px; }
+        .file-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            background: #f8fafc;
+            border-radius: 8px;
+            margin-bottom: 6px;
+            border: 1px solid #e2e8f0;
+        }
+        .file-icon {
+            width: 32px; height: 32px;
+            border-radius: 6px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 14px;
+        }
+        .file-icon.diagram { background: #dbeafe; color: #2563eb; }
+        .file-icon.document { background: #dcfce7; color: #16a34a; }
+        .file-icon.image { background: #f3e8ff; color: #9333ea; }
+        .file-icon.visio { background: #fef3c7; color: #d97706; }
+        .file-info { flex: 1; }
+        .file-info .name { font-size: 0.875rem; font-weight: 500; color: #334155; }
+        .file-info .meta { font-size: 0.75rem; color: #94a3b8; }
+        .file-remove {
+            background: none; border: none; cursor: pointer;
+            color: #94a3b8; padding: 4px;
+            transition: color 0.2s;
+        }
+        .file-remove:hover { color: #ef4444; }
+
+        /* How It Works */
+        .how-item {
+            display: flex; gap: 10px; margin-bottom: 12px;
+            align-items: flex-start;
+        }
+        .how-icon {
+            width: 20px; height: 20px; margin-top: 2px; flex-shrink: 0;
+        }
+        .how-item .label { font-size: 0.875rem; font-weight: 600; color: #334155; }
+        .how-item .desc { font-size: 0.75rem; color: #64748b; }
+
+        .info-box {
+            display: flex; gap: 8px; align-items: flex-start;
+            padding: 12px;
+            background: #eff6ff;
+            border-radius: 8px;
+            margin-top: 8px;
+        }
+        .info-box svg { width: 16px; height: 16px; color: #3b82f6; flex-shrink: 0; margin-top: 2px; }
+        .info-box p { font-size: 0.75rem; color: #1d4ed8; }
+
+        /* Analyze Button */
+        .analyze-btn {
+            width: 100%;
+            padding: 14px;
+            background: #4f46e5;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+        }
+        .analyze-btn:hover { background: #4338ca; box-shadow: 0 6px 16px rgba(79, 70, 229, 0.4); }
+        .analyze-btn:disabled {
+            background: #94a3b8;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+        .analyze-btn svg { width: 20px; height: 20px; }
+
+        /* Spinner */
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .spinner { animation: spin 1s linear infinite; }
+
+        /* Error */
+        .error-box {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-bottom: 16px;
+            color: #dc2626;
+            font-size: 0.875rem;
+            display: none;
+        }
+
+        /* Results - Summary */
+        .summary-card {
+            border-radius: 12px;
+            border: 1px solid;
+            overflow: hidden;
+            padding: 20px 24px;
+        }
+        .summary-card.critical { background: #fef2f2; border-color: #fecaca; }
+        .summary-card.high { background: #fff7ed; border-color: #fed7aa; }
+        .summary-card.medium { background: #fefce8; border-color: #fde68a; }
+        .summary-card.low { background: #f0fdf4; border-color: #bbf7d0; }
+
+        .summary-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+        .summary-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #0f172a;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .summary-text { font-size: 0.875rem; color: #475569; margin-top: 4px; }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-top: 16px;
+        }
+        .stat-box {
+            background: rgba(255,255,255,0.6);
+            border-radius: 8px;
+            padding: 12px;
+            text-align: center;
+        }
+        .stat-box .count { font-size: 1.5rem; font-weight: 700; }
+        .stat-box .label { font-size: 0.75rem; color: #64748b; }
+        .stat-box .count.critical-c { color: #dc2626; }
+        .stat-box .count.high-c { color: #ea580c; }
+        .stat-box .count.medium-c { color: #ca8a04; }
+        .stat-box .count.low-c { color: #16a34a; }
+
+        .timestamp { font-size: 0.75rem; color: #64748b; margin-top: 12px; }
+
+        /* Severity Badge */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 10px;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            border: 1px solid;
+        }
+        .badge.critical { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
+        .badge.high { background: #fff7ed; color: #ea580c; border-color: #fed7aa; }
+        .badge.medium { background: #fefce8; color: #ca8a04; border-color: #fde68a; }
+        .badge.low { background: #f0fdf4; color: #16a34a; border-color: #bbf7d0; }
+
+        /* Components */
+        .components-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 16px 20px;
+        }
+        .component-tag {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 12px;
+            background: #f1f5f9;
+            color: #475569;
+            border-radius: 999px;
+            font-size: 0.875rem;
+        }
+
+        /* SPOF List */
+        .spof-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .expand-all-btn {
+            background: none;
+            border: none;
+            color: #4f46e5;
+            font-size: 0.75rem;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        .expand-all-btn:hover { color: #4338ca; }
+
+        .spof-item {
+            border-bottom: 1px solid #f1f5f9;
+            padding: 16px 20px;
+        }
+        .spof-item:last-child { border-bottom: none; }
+        .spof-toggle {
+            width: 100%;
+            background: none;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            text-align: left;
+            padding: 0;
+        }
+        .spof-toggle-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .spof-name { font-weight: 500; color: #0f172a; }
+        .category-tag {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            background: #f1f5f9;
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+        .spof-details {
+            display: none;
+            margin-top: 12px;
+            margin-left: 28px;
+        }
+        .spof-details.open { display: block; }
+        .spof-details .section-label {
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #64748b;
+            margin-bottom: 4px;
+        }
+        .spof-details .section-text {
+            font-size: 0.875rem;
+            color: #475569;
+            margin-bottom: 12px;
+        }
+        .recommendation-box {
+            padding: 12px;
+            background: #eef2ff;
+            border-radius: 8px;
+        }
+        .recommendation-box .section-label { color: #4f46e5; }
+        .recommendation-box .section-text { color: #3730a3; margin-bottom: 0; }
+
+        .chevron { width: 16px; height: 16px; color: #94a3b8; transition: transform 0.2s; flex-shrink: 0; }
+        .chevron.open { transform: rotate(180deg); }
+
+        .warning-icon { width: 16px; height: 16px; flex-shrink: 0; }
+        .warning-icon.critical { color: #dc2626; }
+        .warning-icon.high { color: #ea580c; }
+        .warning-icon.medium { color: #ca8a04; }
+        .warning-icon.low { color: #16a34a; }
+
+        /* Placeholder */
+        .placeholder {
+            text-align: center;
+            padding: 60px 20px;
+        }
+        .placeholder svg { width: 64px; height: 64px; color: #cbd5e1; margin: 0 auto 16px; }
+        .placeholder h3 { font-size: 1.1rem; font-weight: 600; color: #475569; margin-bottom: 8px; }
+        .placeholder p { font-size: 0.875rem; color: #94a3b8; max-width: 400px; margin: 0 auto; }
+        .placeholder-cards {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            max-width: 400px;
+            margin: 24px auto 0;
+        }
+        .placeholder-card {
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .placeholder-card.blue { background: #eff6ff; }
+        .placeholder-card.green { background: #f0fdf4; }
+        .placeholder-card.purple { background: #faf5ff; }
+        .placeholder-card svg { width: 24px; height: 24px; margin: 0 auto 4px; }
+        .placeholder-card .pc-label { font-size: 0.75rem; font-weight: 500; }
+        .placeholder-card .pc-exts { font-size: 0.7rem; }
+        .placeholder-card.blue svg { color: #3b82f6; }
+        .placeholder-card.blue .pc-label { color: #1d4ed8; }
+        .placeholder-card.blue .pc-exts { color: #3b82f6; }
+        .placeholder-card.green svg { color: #16a34a; }
+        .placeholder-card.green .pc-label { color: #15803d; }
+        .placeholder-card.green .pc-exts { color: #16a34a; }
+        .placeholder-card.purple svg { color: #9333ea; }
+        .placeholder-card.purple .pc-label { color: #7e22ce; }
+        .placeholder-card.purple .pc-exts { color: #9333ea; }
+
+        #results-area { display: none; }
+        #results-area.visible { display: block; }
+        #placeholder { display: block; }
+        #placeholder.hidden { display: none; }
+        #loading { display: none; }
+        #loading.visible { display: block; }
+
+        .results-stack { display: flex; flex-direction: column; gap: 20px; }
+
+        /* Footer */
+        footer {
+            border-top: 1px solid #e2e8f0;
+            background: white;
+            margin-top: 48px;
+            padding: 24px;
+            text-align: center;
+        }
+        footer p { font-size: 0.75rem; color: #94a3b8; }
+
+        .left-column { display: flex; flex-direction: column; gap: 16px; }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <div class="logo">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill="white" stroke="white"/></svg>
+            </div>
+            <div>
+                <h1>SPOF Analyzer</h1>
+                <p>Single Point of Failure Detection &amp; Analysis</p>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <!-- Left Column -->
+        <div class="left-column">
+            <!-- Upload Card -->
+            <div class="card">
+                <div class="card-header">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    <h2>Upload Files</h2>
+                </div>
+                <div class="card-body">
+                    <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                        <p class="main-text">Drop files here or click to browse</p>
+                        <p>Supports: .drawio, .vsdx, .vsd, .docx, .doc, images</p>
+                    </div>
+                    <input type="file" id="fileInput" multiple accept=".drawio,.vsdx,.vsd,.docx,.doc,.png,.jpg,.jpeg,.gif,.bmp,.svg,.webp" style="display:none">
+                    <div class="file-list" id="fileList"></div>
+                </div>
+            </div>
+
+            <!-- How It Works Card -->
+            <div class="card">
+                <div class="card-header">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                    <h2>How It Works</h2>
+                </div>
+                <div class="card-body">
+                    <div class="how-item">
+                        <svg class="how-icon" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+                        <div>
+                            <p class="label">.drawio Diagrams</p>
+                            <p class="desc">Parses XML graph structure, finds articulation points (critical SPOFs), hub nodes, and single-connection components.</p>
+                        </div>
+                    </div>
+                    <div class="how-item">
+                        <svg class="how-icon" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                        <div>
+                            <p class="label">.docx Documents</p>
+                            <p class="desc">Extracts text and scans for 15+ SPOF patterns: single databases, missing redundancy, monolithic architecture, and more.</p>
+                        </div>
+                    </div>
+                    <div class="how-item">
+                        <svg class="how-icon" viewBox="0 0 24 24" fill="none" stroke="#9333ea" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                        <div>
+                            <p class="label">Images &amp; Visio</p>
+                            <p class="desc">For best results, export to .drawio format. Images are accepted but require the source file for full graph analysis.</p>
+                        </div>
+                    </div>
+                    <div class="info-box">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                        <p>All analysis runs locally on your machine. No data is sent to any external server.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Analyze Button -->
+            <button class="analyze-btn" id="analyzeBtn" disabled onclick="analyzeFiles()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                Analyze for SPOF
+            </button>
+        </div>
+
+        <!-- Right Column -->
+        <div>
+            <!-- Error -->
+            <div class="error-box" id="errorBox"></div>
+
+            <!-- Placeholder -->
+            <div class="card" id="placeholder">
+                <div class="placeholder">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                    <h3>Upload &amp; Analyze</h3>
+                    <p>Upload your architecture diagrams (.drawio, .vsdx, images) or design documents (.docx, .doc) to identify single points of failure in your system.</p>
+                    <div class="placeholder-cards">
+                        <div class="placeholder-card blue">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+                            <p class="pc-label">Diagrams</p>
+                            <p class="pc-exts">.drawio .vsdx</p>
+                        </div>
+                        <div class="placeholder-card green">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                            <p class="pc-label">Documents</p>
+                            <p class="pc-exts">.docx .doc</p>
+                        </div>
+                        <div class="placeholder-card purple">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                            <p class="pc-label">Images</p>
+                            <p class="pc-exts">.png .jpg .svg</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Loading -->
+            <div class="card" id="loading">
+                <div class="placeholder">
+                    <svg class="spinner" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="2" style="width:48px;height:48px"><path d="M21 12a9 9 0 11-6.219-8.56"/></svg>
+                    <h3>Analyzing Architecture...</h3>
+                    <p>Parsing files and running graph analysis...</p>
+                </div>
+            </div>
+
+            <!-- Results -->
+            <div id="results-area">
+                <div class="results-stack" id="resultsStack"></div>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p>SPOF Analyzer &mdash; Identify and mitigate single points of failure in your system architecture</p>
+    </footer>
+
+    <script>
+        let uploadedFiles = [];
+
+        // File input handling
+        const fileInput = document.getElementById('fileInput');
+        const uploadZone = document.getElementById('uploadZone');
+        const fileList = document.getElementById('fileList');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const errorBox = document.getElementById('errorBox');
+
+        fileInput.addEventListener('change', (e) => {
+            addFiles(Array.from(e.target.files));
+            fileInput.value = '';
+        });
+
+        // Drag and drop
+        uploadZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadZone.classList.add('dragover');
+        });
+        uploadZone.addEventListener('dragleave', () => {
+            uploadZone.classList.remove('dragover');
+        });
+        uploadZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadZone.classList.remove('dragover');
+            addFiles(Array.from(e.dataTransfer.files));
+        });
+
+        function addFiles(newFiles) {
+            const allowed = ['drawio', 'vsdx', 'vsd', 'docx', 'doc', 'png', 'jpg', 'jpeg', 'gif', 'bmp', 'svg', 'webp'];
+            for (const f of newFiles) {
+                const ext = f.name.split('.').pop().toLowerCase();
+                if (allowed.includes(ext)) {
+                    uploadedFiles.push(f);
+                }
+            }
+            renderFileList();
+            updateButton();
+        }
+
+        function removeFile(index) {
+            uploadedFiles.splice(index, 1);
+            renderFileList();
+            updateButton();
+        }
+
+        function getFileTypeClass(name) {
+            const ext = name.split('.').pop().toLowerCase();
+            if (ext === 'drawio') return 'diagram';
+            if (['vsdx', 'vsd'].includes(ext)) return 'visio';
+            if (['docx', 'doc'].includes(ext)) return 'document';
+            return 'image';
+        }
+
+        function getFileTypeLabel(name) {
+            const ext = name.split('.').pop().toLowerCase();
+            if (ext === 'drawio') return 'diagram';
+            if (['vsdx', 'vsd'].includes(ext)) return 'visio';
+            if (['docx', 'doc'].includes(ext)) return 'document';
+            return 'image';
+        }
+
+        function getFileIconSVG(type) {
+            if (type === 'diagram') return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>';
+            if (type === 'document') return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>';
+            if (type === 'visio') return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/></svg>';
+            return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>';
+        }
+
+        function renderFileList() {
+            fileList.innerHTML = '';
+            uploadedFiles.forEach((f, i) => {
+                const type = getFileTypeClass(f.name);
+                const size = (f.size / 1024).toFixed(1);
+                const div = document.createElement('div');
+                div.className = 'file-item';
+                div.innerHTML = `
+                    <div class="file-icon ${type}">${getFileIconSVG(type)}</div>
+                    <div class="file-info">
+                        <div class="name">${f.name}</div>
+                        <div class="meta">${size} KB &middot; ${getFileTypeLabel(f.name)}</div>
+                    </div>
+                    <button class="file-remove" onclick="removeFile(${i})" title="Remove file">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                    </button>
+                `;
+                fileList.appendChild(div);
+            });
+        }
+
+        function updateButton() {
+            analyzeBtn.disabled = uploadedFiles.length === 0;
+        }
+
+        function showError(msg) {
+            errorBox.textContent = msg;
+            errorBox.style.display = 'block';
+        }
+
+        function hideError() {
+            errorBox.style.display = 'none';
+        }
+
+        async function analyzeFiles() {
+            if (uploadedFiles.length === 0) return;
+
+            hideError();
+            document.getElementById('placeholder').classList.add('hidden');
+            document.getElementById('results-area').classList.remove('visible');
+            document.getElementById('loading').classList.add('visible');
+            analyzeBtn.disabled = true;
+            analyzeBtn.innerHTML = '<svg class="spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px"><path d="M21 12a9 9 0 11-6.219-8.56"/></svg> Analyzing...';
+
+            const formData = new FormData();
+            for (const f of uploadedFiles) {
+                formData.append('files', f);
+            }
+
+            try {
+                const response = await fetch('/analyze', {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    showError(data.error || 'Analysis failed');
+                    document.getElementById('loading').classList.remove('visible');
+                    document.getElementById('placeholder').classList.remove('hidden');
+                    return;
+                }
+
+                renderResults(data);
+
+            } catch (err) {
+                showError('An error occurred: ' + err.message);
+                document.getElementById('loading').classList.remove('visible');
+                document.getElementById('placeholder').classList.remove('hidden');
+            } finally {
+                analyzeBtn.disabled = false;
+                analyzeBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Analyze for SPOF';
+                updateButton();
+            }
+        }
+
+        function renderResults(data) {
+            document.getElementById('loading').classList.remove('visible');
+            const area = document.getElementById('results-area');
+            area.classList.add('visible');
+
+            const stack = document.getElementById('resultsStack');
+            stack.innerHTML = '';
+
+            // Summary Card
+            const risk = data.overall_risk;
+            const summaryIcon = risk === 'low'
+                ? '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>'
+                : `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${risk==='critical'?'#dc2626':risk==='high'?'#ea580c':'#ca8a04'}" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`;
+
+            const now = new Date().toLocaleString();
+            stack.innerHTML += `
+                <div class="summary-card ${risk}">
+                    <div class="summary-header">
+                        <div>
+                            <div class="summary-title">${summaryIcon} Analysis Summary</div>
+                            <p class="summary-text">${data.summary}</p>
+                        </div>
+                        <span class="badge ${risk}">${risk.charAt(0).toUpperCase() + risk.slice(1)}</span>
+                    </div>
+                    <div class="stats-grid">
+                        <div class="stat-box"><div class="count critical-c">${data.counts.critical}</div><div class="label">Critical</div></div>
+                        <div class="stat-box"><div class="count high-c">${data.counts.high}</div><div class="label">High</div></div>
+                        <div class="stat-box"><div class="count medium-c">${data.counts.medium}</div><div class="label">Medium</div></div>
+                        <div class="stat-box"><div class="count low-c">${data.counts.low}</div><div class="label">Low</div></div>
+                    </div>
+                    <p class="timestamp">Analyzed at ${now}</p>
+                </div>
+            `;
+
+            // Components
+            if (data.components && data.components.length > 0) {
+                let compHtml = '<div class="card"><div class="card-header"><h2>Detected Components</h2></div><div class="components-list">';
+                for (const c of data.components) {
+                    compHtml += `<span class="component-tag">${c}</span>`;
+                }
+                compHtml += '</div></div>';
+                stack.innerHTML += compHtml;
+            }
+
+            // SPOF List
+            if (data.spofs && data.spofs.length > 0) {
+                let spofHtml = '<div class="card">';
+                spofHtml += '<div class="card-header spof-header"><h2>Identified Single Points of Failure (' + data.spofs.length + ')</h2>';
+                spofHtml += '<button class="expand-all-btn" onclick="toggleAllSpofs()">Expand All</button></div>';
+
+                for (let i = 0; i < data.spofs.length; i++) {
+                    const s = data.spofs[i];
+                    const warnColor = s.severity === 'critical' ? 'critical' : s.severity === 'high' ? 'high' : s.severity === 'medium' ? 'medium' : 'low';
+                    spofHtml += `
+                        <div class="spof-item">
+                            <button class="spof-toggle" onclick="toggleSpof(${i})">
+                                <div class="spof-toggle-left">
+                                    <svg class="warning-icon ${warnColor}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                                    <span class="spof-name">${s.component}</span>
+                                    <span class="badge ${s.severity}">${s.severity.charAt(0).toUpperCase() + s.severity.slice(1)}</span>
+                                    <span class="category-tag">${s.category}</span>
+                                </div>
+                                <svg class="chevron" id="chevron-${i}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                            </button>
+                            <div class="spof-details" id="spof-details-${i}">
+                                <p class="section-label">Description</p>
+                                <p class="section-text">${s.description}</p>
+                                <div class="recommendation-box">
+                                    <p class="section-label">Recommendation</p>
+                                    <p class="section-text">${s.recommendation}</p>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+                spofHtml += '</div>';
+                stack.innerHTML += spofHtml;
+
+                // Auto-expand critical items
+                setTimeout(() => {
+                    data.spofs.forEach((s, i) => {
+                        if (s.severity === 'critical') toggleSpof(i);
+                    });
+                }, 100);
+            }
+        }
+
+        function toggleSpof(index) {
+            const details = document.getElementById('spof-details-' + index);
+            const chevron = document.getElementById('chevron-' + index);
+            if (details) {
+                details.classList.toggle('open');
+                chevron.classList.toggle('open');
+            }
+        }
+
+        function toggleAllSpofs() {
+            const allDetails = document.querySelectorAll('.spof-details');
+            const allOpen = Array.from(allDetails).every(d => d.classList.contains('open'));
+            allDetails.forEach((d, i) => {
+                const chevron = document.getElementById('chevron-' + i);
+                if (allOpen) {
+                    d.classList.remove('open');
+                    if (chevron) chevron.classList.remove('open');
+                } else {
+                    d.classList.add('open');
+                    if (chevron) chevron.classList.add('open');
+                }
+            });
+            const btn = document.querySelector('.expand-all-btn');
+            if (btn) btn.textContent = allOpen ? 'Expand All' : 'Collapse All';
+        }
+    </script>
+</body>
+</html>
